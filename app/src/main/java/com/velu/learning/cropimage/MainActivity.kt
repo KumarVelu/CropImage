@@ -1,13 +1,13 @@
 package com.velu.learning.cropimage
 
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.yalantis.ucrop.UCrop
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 
@@ -17,7 +17,6 @@ class MainActivity : AppCompatActivity() {
     companion object{
         private const val TAG = "MainActivity"
         private const val RC_SELECT_IMAGE = 101
-        private const val RC_CROP_IMAGE = 102
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,11 +26,24 @@ class MainActivity : AppCompatActivity() {
         btn_choose_pic.setOnClickListener{
            launchImagePickerActivity()
         }
+
+        btn_test.setOnClickListener{
+            startActivity(Intent(this, ImageResultActivity::class.java))
+        }
     }
 
     private fun launchImagePickerActivity(){
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, RC_SELECT_IMAGE)
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+            .setType("image/*")
+            .addCategory(Intent.CATEGORY_OPENABLE)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            val mimeTypes = arrayOf("image/jpeg", "image/png")
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+        }
+
+        startActivityForResult(
+            Intent.createChooser(intent, getString(R.string.label_select_picture)), RC_SELECT_IMAGE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
@@ -40,51 +52,29 @@ class MainActivity : AppCompatActivity() {
         if(resultCode == RESULT_OK){
 
             if(requestCode == RC_SELECT_IMAGE){
-                intent?.data?.let {
-                    cropImage(it)
-                } ?: Toast.makeText(this, "Try again", Toast.LENGTH_LONG).show()
-            }else if(requestCode == RC_CROP_IMAGE){
-                val extras = intent?.extras
-                val selectedBitmap = extras?.getParcelable<Bitmap>("data")
-                launchImageResultActivity(selectedBitmap)
+                val selectedUri = intent?.data
+                if (selectedUri != null) {
+                    startCrop(selectedUri)
+                } else {
+                    Toast.makeText(this, R.string.toast_cannot_retrieve_selected_image, Toast.LENGTH_SHORT).show()
+                }
+            }else if(requestCode == UCrop.REQUEST_CROP){
+                handleCropResult(intent!!)
             }
         }
     }
 
-    private fun launchImageResultActivity(selectedBitmap: Bitmap?) {
-            selectedBitmap?.let {
-                startActivity(ImageResultActivity.getStartIntent(this, it))
-            }
+    private fun startCrop(uri: Uri) {
+        UCrop.of(uri, Uri.fromFile(File(cacheDir, Constants.CROPPED_IMAGE_NAME)))
+            .start(this)
     }
 
-    /* private fun processIntentDataFromGallery(imageUri : Uri){
-         val projection = arrayOf(MediaStore.Images.Media.DATA)
-         val cursor = contentResolver.query(imageUri, projection, null, null,
-             null)
-         cursor?.let {
-             it.moveToFirst()
-             val imagePath = it.getString(0)
-             cropImage(imagePath)
-             it.close()
-         }
-     }*/
-
-    private fun cropImage(imageUri: Uri){
-        val cropIntent = Intent("com.android.camera.action.CROP")
-
-        cropIntent.setDataAndType(imageUri, "image/*")
-        // set crop properties
-        cropIntent.putExtra("crop", "true")
-        // indicate aspect of desired crop
-        cropIntent.putExtra("aspectX", 1)
-        cropIntent.putExtra("aspectY", 1)
-        // indicate output X and Y
-        cropIntent.putExtra("outputX", 1000)
-        cropIntent.putExtra("outputY", 1000)
-
-        // retrieve data on return
-        cropIntent.putExtra("return-data", true);
-        // start the activity - we handle returning in onActivityResult
-        startActivityForResult(cropIntent, RC_CROP_IMAGE);
+    private fun handleCropResult(result: Intent) {
+        val resultUri = UCrop.getOutput(result)
+        if (resultUri != null) {
+            startActivity(BlurImageActivity.getStartIntent(this, resultUri))
+        } else {
+            Toast.makeText(this, R.string.toast_cannot_retrieve_cropped_image, Toast.LENGTH_SHORT).show()
+        }
     }
 }

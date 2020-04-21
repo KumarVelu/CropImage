@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">CropImage</string>
     <string name="select_image">Choose Picture</string>
+
+    <string name="label_select_picture">Select Picture</string>
+    <string name="toast_cannot_retrieve_selected_image">Cannot retrieve selected image</string>
+    <string name="toast_cannot_retrieve_cropped_image">Cannot retrieve cropped image</string>
+    <string name="done">Done</string>
+    <string name="view_cropped_blurred_image">View Cropped/Blurred Image</string>
 </resources>
