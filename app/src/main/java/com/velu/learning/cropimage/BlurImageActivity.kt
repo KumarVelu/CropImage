@@ -6,10 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Bundle
-import android.renderscript.Allocation
-import android.renderscript.Element
 import android.renderscript.RenderScript
-import android.renderscript.ScriptIntrinsicBlur
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.SeekBar
@@ -26,7 +23,8 @@ import java.io.FileOutputStream
 
 class BlurImageActivity : AppCompatActivity() {
 
-    private lateinit var bitmapImage: Bitmap
+    private lateinit var originalBitmapImage: Bitmap
+    private lateinit var customizedBitmapImage: Bitmap
     private lateinit var rs: RenderScript
 
     companion object {
@@ -53,8 +51,9 @@ class BlurImageActivity : AppCompatActivity() {
 
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val radius = if (progress <= 0) 1 else progress
-                bitmapImage = BlurBuilder.blurRenderScript(this@BlurImageActivity, bitmapImage, radius)!!
-                iv_cropped_image.setImageBitmap(bitmapImage)
+
+                customizedBitmapImage = BlurBuilder.blur(this@BlurImageActivity, originalBitmapImage, radius)
+                iv_cropped_image.setImageBitmap(customizedBitmapImage)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -76,8 +75,9 @@ class BlurImageActivity : AppCompatActivity() {
             .diskCacheStrategy(DiskCacheStrategy.NONE)
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                    bitmapImage = resource
-                    iv_cropped_image.setImageBitmap(bitmapImage)
+                    originalBitmapImage = resource
+                    customizedBitmapImage = resource
+                    iv_cropped_image.setImageBitmap(originalBitmapImage)
                 }
 
                 override fun onLoadCleared(placeholder: Drawable?) {
@@ -92,7 +92,7 @@ class BlurImageActivity : AppCompatActivity() {
         val imageFile = File(cacheDir, Constants.CROPPED_IMAGE_NAME)
         try {
             val os = FileOutputStream(imageFile)
-            bitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, os)
+            customizedBitmapImage.compress(Bitmap.CompressFormat.JPEG, 100, os)
             os.flush()
             os.close()
 
